@@ -29,7 +29,7 @@ try:
     
     # If file is too small, let's boost it! | إذا الملف صغير جداً، خلينا نكبره
     if len(df) < 20:
-        print("⚠️ Dataset too small, generating synthetic data... | البيانات قليلة، جاري توليد بيانات إضافية...")
+        print("Dataset too small, generating synthetic data... | البيانات قليلة، جاري توليد بيانات إضافية...")
         # Synthetic Data | بيانات اصطناعية لتعليم الموديل
         extra_data = {
             'text': [
@@ -42,15 +42,15 @@ try:
         }
         df = pd.DataFrame(extra_data)
     
-    print(f"✅ Ready with {len(df)} samples! | جاهز بـ {len(df)} عينة!")
+    print(f"Ready with {len(df)} samples! | جاهز بـ {len(df)} عينة!")
 
 except Exception:
-    print("📂 Creating new dataset file... | جاري إنشاء ملف بيانات جديد...")
+    print("Creating new dataset file... | جاري إنشاء ملف بيانات جديد...")
     # (نفس الكود اللي فوق لتوليد البيانات)
     exit()
 
 # 3. Clean the text data | تنظيف بيانات النصوص
-print("🧹 Cleaning text... | جاري تنظيف النصوص...")
+print("Cleaning text... | جاري تنظيف النصوص...")
 df['cleaned_text'] = df['text'].apply(clean_arabic_text)
 
 # 4. Split data into Train and Test sets | تقسيم البيانات لتدريب واختبار
@@ -65,7 +65,7 @@ X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
 # 6. Train the AI Model (Naive Bayes) | تدريب موديل الذكاء الاصطناعي
-print("🧠 Training the model... | جاري تدريب الموديل...")
+print("Training the model... | جاري تدريب الموديل...")
 model = MultinomialNB()
 model.fit(X_train_tfidf, y_train)
 
