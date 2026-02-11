@@ -9,7 +9,7 @@ Welcome to my personal NLP project! This tool classifies Arabic text and dialect
 * **Dual Language Support:** Bilingual code and documentation (Arabic/English).
 * **Text Preprocessing:** Cleaning Arabic text, normalizing letters, and removing noise.
 * **Machine Learning:** Powered by `Scikit-Learn` and `MultinomialNB`.
-* **High Accuracy:** Reached **100% Accuracy** with synthetic training data! 🚀
+* **High Accuracy:** Reached **100% Accuracy** with synthetic training data
 
 ---
 
