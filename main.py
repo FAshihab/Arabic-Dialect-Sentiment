@@ -1,77 +1,75 @@
 import pandas as pd
+import os
 import re
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 
-# 1. Text Preprocessing Function | وظيفة معالجة وتنظيف النصوص
-def clean_arabic_text(text):
-    text = str(text)
-    # Normalize Alef, Ya, and Ta Marbuta | توحيد الألف والياء والتاء المربوطة
-    text = re.sub(r'[إأآ]', 'ا', text)
-    text = re.sub(r'ى', 'ي', text)
-    text = re.sub(r'ة', 'ه', text)
-    # Remove Diacritics (Tashkeel) | إزالة التشكيل
-    text = re.sub(r'[\u064B-\u0652]', '', text)
-    # Remove non-Arabic characters | إزالة أي رموز غير عربية
-    text = re.sub(r'[^\u0600-\u06FF\s]', '', text)
-    # Remove character elongation | إزالة الحروف المكررة (تطويل)
-    text = re.sub(r'(.)\1+', r'\1', text)
-    return text.strip()
-
-print(" Starting the project... | جاري بدء المشروع...")
-
-# 2. Load or Generate Dataset | تحميل أو توليد البيانات
-try:
-    # Try to load existing file | محاولة تحميل الملف الموجود
-    df = pd.read_csv('data/large_dataset.csv', names=['label', 'text'])
+# 1. Setup and Data Generation | إعداد وتوليد البيانات
+def setup_data():
+    print("Starting the project...") # بدء المشروع
+    data_path = 'data/dataset.csv'
     
-    # If file is too small, let's boost it! | إذا الملف صغير جداً، خلينا نكبره
-    if len(df) < 20:
-        print("Dataset too small, generating synthetic data... | البيانات قليلة، جاري توليد بيانات إضافية...")
-        # Synthetic Data | بيانات اصطناعية لتعليم الموديل
-        extra_data = {
+    # Create data folder if it doesn't exist | إنشاء مجلد البيانات إذا لم يكن موجود
+    if not os.path.exists('data'):
+        os.makedirs('data')
+    
+    # Generate synthetic data if file is missing | توليد بيانات إصطناعية إذا كان الملف مفقود
+    if not os.path.exists(data_path):
+        print("Dataset not found. Generating 1000 synthetic samples...")
+        data = {
             'text': [
-                "الاكل يجنن", "خدمة رائعة", "ممتاز جدا", "رهيب انصحكم فيه", "بطل بطل",
-                "سيء جدا", "تجربة تعيسة", "ما انصح فيه", "اكل بارد", "تاخير في الطلب",
-                "المكان نظيف", "موظفين محترمين", "شغل مرتب", "واو حبيت", "يستاهل كل ريال",
-                "غالي على فاضي", "قرف استغفر الله", "اسوء مطعم", "خدمة بطيئة", "لا يعيد التجربة"
-            ] * 50, # نكرر الجمل 50 مرة عشان يصير عندنا 1000 جملة
-            'label': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0] * 50
+                "هذا المطعم يجنن والأكل رائع", "الخدمة ممتازة والجو جميل", 
+                "تجربة سيئة جدا وتأخير في الطلب", "الأكل بارد والخدمة تعيسة",
+                "ممتاز انصح به", "لا انصح بالتعامل معهم", "جيد جدا", "سيء للغاية"
+            ] * 125,
+            'sentiment': [1, 1, 0, 0, 1, 0, 1, 0] * 125
         }
-        df = pd.DataFrame(extra_data)
+        df = pd.DataFrame(data)
+        df.to_csv(data_path, index=False)
+        print("New dataset file created successfully.")
     
-    print(f"Ready with {len(df)} samples! | جاهز بـ {len(df)} عينة!")
+    return pd.read_csv(data_path)
 
-except Exception:
-    print("Creating new dataset file... | جاري إنشاء ملف بيانات جديد...")
-    # (نفس الكود اللي فوق لتوليد البيانات)
-    exit()
+# 2. Text Cleaning Function | وظيفة تنظيف النصوص
+def clean_arabic_text(text):
+    # Normalize Alef | توحيد أشكال الألف
+    text = re.sub("[إأآ]", "ا", text)
+    # Remove repeated characters | إزالة تكرار الحروف (تطويل)
+    text = re.sub(r'(.)\1+', r'\1', text)
+    # Remove non-arabic characters | إزالة الرموز والأحرف غير العربية
+    text = re.sub(r'[^\u0600-\u06FF\s]', '', text)
+    return text
 
-# 3. Clean the text data | تنظيف بيانات النصوص
-print("Cleaning text... | جاري تنظيف النصوص...")
-df['cleaned_text'] = df['text'].apply(clean_arabic_text)
+# 3. Main Execution Flow | مسار التنفيذ الرئيسي
+def run_analysis():
+    # Load the data | تحميل البيانات
+    df = setup_data()
+    
+    print("Cleaning text...") # جاري تنظيف النصوص
+    df['text'] = df['text'].apply(clean_arabic_text)
+    
+    # 4. Vectorization (Linear Algebra) | تحويل النصوص لمتجهات (الجبر الخطي)
+    # Transforming text into a Matrix of numbers | تحويل النص إلى مصفوفة أرقام
+    print("Training the model...") # جاري تدريب الموديل
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(df['text']) # This is your Matrix | المصفوفة الخاصة بك
+    y = df['sentiment']
+    
+    # Split data into training and testing | تقسيم البيانات للتدريب والاختبار
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Train the Machine Learning Model | تدريب موديل تعلم الآلة
+    model = MultinomialNB()
+    model.fit(X_train, y_train)
+    
+    # 5. Final Results | النتائج النهائية
+    predictions = model.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
+    
+    print("\nFinal Result") # النتيجة النهائية
+    print(f"Accuracy: {accuracy * 100:.2f}%")
 
-# 4. Split data into Train and Test sets | تقسيم البيانات لتدريب واختبار
-# 80% Training, 20% Testing | 80% للتدريب و 20% للاختبار
-X_train, X_test, y_train, y_test = train_test_split(
-    df['cleaned_text'], df['label'], test_size=0.2, random_state=42
-)
-
-# 5. Convert text to numbers (Vectorization) | تحويل النصوص لأرقام
-vectorizer = TfidfVectorizer(max_features=5000) 
-X_train_tfidf = vectorizer.fit_transform(X_train)
-X_test_tfidf = vectorizer.transform(X_test)
-
-# 6. Train the AI Model (Naive Bayes) | تدريب موديل الذكاء الاصطناعي
-print("Training the model... | جاري تدريب الموديل...")
-model = MultinomialNB()
-model.fit(X_train_tfidf, y_train)
-
-# 7. Evaluate Model Performance | تقييم أداء الموديل
-y_pred = model.predict(X_test_tfidf)
-accuracy = accuracy_score(y_test, y_pred)
-
-print(f"\n Final Result | النتيجة النهائية")
-print(f"Accuracy: {accuracy * 100:.2f}% | دقة الموديل")
+if __name__ == "__main__":
+    run_analysis()
