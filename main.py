@@ -6,108 +6,101 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 
-# 1. Text Cleaning & Validation | وظيفة تنظيف وفحص النصوص
+# 1. Text Cleaning & Validation Logic
 def clean_arabic_text(text):
     """
-    Cleans Arabic text by normalizing characters and removing non-Arabic symbols.
-    تنظيف النص العربي من خلال توحيد الأحرف وإزالة الرموز غير العربية.
+    Normalizes Arabic characters and filters out non-Arabic noise.
+    Ensures input validity before processing.
     """
+    if not isinstance(text, str):
+        return None
     text = text.strip()
-    # Ensure the input contains Arabic characters | التأكد من أن الإدخال يحتوي على أحرف عربية
+    
+    # Check if the text contains Arabic characters to avoid gibberish
     if not re.search(r'[\u0600-\u06FF]', text):
         return None
         
-    text = re.sub("[إأآ]", "ا", text) # Normalize Alef | توحيد الألف
-    text = re.sub(r'(.)\1+', r'\1', text) # Remove repeated chars | إزالة تكرار الحروف
-    text = re.sub(r'[^\u0600-\u06FF\s]', '', text) # Remove symbols | إزالة الرموز
+    # Normalization and cleaning
+    text = re.sub("[إأآ]", "ا", text)
+    text = re.sub(r'(.)\1+', r'\1', text) # Remove character repetition
+    text = re.sub(r'[^\u0600-\u06FF\s]', '', text) # Keep only Arabic script and spaces
     return text
 
-# 2. Setup and Training | إعداد البيانات وتدريب المودل
+# 2. Automated Training Pipeline
 def setup_and_train():
-    print("Starting the project... | جاري بدء المشروع...")
+    """
+    Builds the dataset, trains the Naive Bayes model, 
+    and returns the model and vectorizer for production use.
+    """
     data_path = 'data/dataset.csv'
-    
-    # Create directory if missing | إنشاء المجلد إذا لم يكن موجود
     if not os.path.exists('data'): os.makedirs('data')
     
-    # Positive regional examples | أمثلة إيجابية بمختلف اللهجات
-    positive_examples = [
+    # Saudi Dialect Base Dataset (Positive & Negative)
+    pos_base = [
         "والله إنه قيد القوة والجمال", "شغل هول يجنن ما شاء الله", "يا فديت روحك على هالشغل",
         "احس براحة نفسية اليوم", "الله يجعله دوم هالزين", "مرة مستانس ومبسوط بالحيل",
         "شغل سنع بالحيل وتوب", "يا بعد حي وميتي على هالزين", "ما شاء الله بالحيل مستانس",
-        "خلف ابوي والله هالشغل", "تسذا الشغل السنع ولا بلاش", "يا حبني لكم على هالترتيب",
-        "احس اني ملكت الدنيا من الفرحة", "يا ملحكم وملح شغلكم",
-        "يا بعد راسي والله إنك ذيب", "شغل بطل وعز الله مقامك", "ما يقصرون أهل الشيمة",
-        "والله اني اليوم في قمة حماسي", "الحمدلله الخاطر طيب",
-        "يا واد الشغل مرة كول وجنان", "يسلموا دياتك على هالفن", "شغل مية مية وربي",
-        "احس اني طاير من الفرح", "مرة نايس الله يسعدك",
-        "شغل بطل ومرتب بالحيل", "كفو والله كفيت ووفيت", "مرة حبيته الله يوفقكم",
-        "احس براحة وطمأنينة", "اليوم يومي وكل شي ضابط", "رايق", "مبسوط", "فرحان"
+        "كفو والله كفيت ووفيت", "يا بعد راسي والله إنك ذيب", "مرة نايس الله يسعدك",
+        "رايق", "مبسوط", "فرحان", "يجنن", "روعة", "ممتاز", "رهيب", "خيال", "كفو"
     ]
     
-    # Negative regional examples | أمثلة سلبية بمختلف اللهجات
-    negative_examples = [
+    neg_base = [
         "والله إنه خياس وما يسوى", "شغل هباب وضاع وقتي", "مو زين ابد والتعامل تعيس",
         "للاسف خيبتوا ظني فيكم", "اسوأ مطعم جربته بحياتي", "خدمة بطيئة واكل طعمه غريب",
         "ما يستاهل ولا ريال واحد", "والله إنه فاشل وبقوة", "تعاملهم شين مرة وما انصح",
-        "احس بضيق وتعبان مرة", "اليوم مالي خلق لاي شي", "مرة محبط والوضع ما يطمن",
-        "احس اني ضايع ومهموم", "الوضع سيء والخدمة ماش", "تعبان", "حزين", "ضايق", "سيء", "خايس"
+        "تعبان", "حزين", "ضايق", "سيء", "خايس", "زفت", "هباب", "ماش"
     ]
     
-    # Balance data and labels | موازنة البيانات والتقييمات
-    text_data = positive_examples + negative_examples
-    sentiments = ([1] * len(positive_examples) + [0] * len(negative_examples))
+    # Expand dataset to 10,000 samples for statistical robustness
+    text_data = pos_base + neg_base
+    sentiments = ([1] * len(pos_base) + [0] * len(neg_base))
+    multiplier = 10000 // len(text_data) + 1
     
-    # Create DataFrame and save CSV | إنشاء الجدول وحفظ الملف
-    data = {'text': text_data * 100, 'sentiment': sentiments * 100}
+    data = {'text': text_data * multiplier, 'sentiment': sentiments * multiplier}
     df = pd.DataFrame(data)
     df.to_csv(data_path, index=False)
     
-    # Load and clean for training | تحميل البيانات وتنظيفها للتدريب
-    df = pd.read_csv(data_path)
-    df['text'] = df['text'].apply(lambda x: clean_arabic_text(x) or "نص غير معروف")
-    
-    # Vectorization & Model Training | تحويل النصوص لمتجهات وتدريب الموديل
+    # Preprocessing and Feature Extraction
+    df['text'] = df['text'].apply(lambda x: clean_arabic_text(str(x)) or "unknown")
     vectorizer = TfidfVectorizer()
     X = vectorizer.fit_transform(df['text'])
     y = df['sentiment']
     
-    # Split data | تقسيم البيانات
+    # Train-Test Split and Model Fitting
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = MultinomialNB()
     model.fit(X_train, y_train)
     
-    # Calculate accuracy | حساب الدقة
-    acc = accuracy_score(y_test, model.predict(X_test))
-    return model, vectorizer, acc
+    return model, vectorizer
 
-# 3. Interactive Execution | التنفيذ التفاعلي
+# 3. Sentiment Prediction API Function
+def predict_sentiment(text, model, vectorizer):
+    """
+    Processes a single input and returns a dictionary with 
+    sentiment label and confidence score.
+    """
+    cleaned = clean_arabic_text(text)
+    if not cleaned:
+        return {"error": "Invalid input. Please provide Arabic text."}
+    
+    # Transform input and calculate probabilities
+    vec = vectorizer.transform([cleaned])
+    prediction = model.predict(vec)[0]
+    probs = model.predict_proba(vec)[0]
+    
+    return {
+        "text": text,
+        "sentiment": "Positive" if prediction == 1 else "Negative",
+        "confidence": f"{round(max(probs) * 100, 2)}%"
+    }
+
+# Entry point for development and testing
 if __name__ == "__main__":
-    # Train the model and receive results | تدريب المودل وإستلام النتائج
-    trained_model, our_vectorizer, final_accuracy = setup_and_train()
-    print(f"Model Accuracy: {final_accuracy * 100:.2f}%")
+    # Initialize and train the engine
+    trained_model, our_vectorizer = setup_and_train()
+    print("AI Engine ready for integration.")
     
-    print("\n--- Interactive Sentiment Analysis ---")
-    print("للأيقاف أكتب (خروج)")
-    
-    while True:
-        # Prompt user input | طلب مدخلات المستخدم
-        user_text = input("كيف تحس الحين؟: \n")
-        
-        if user_text.lower() in ['exit', 'خروج']:
-            print("Exiting program... Goodbye!")
-            break
-            
-        # Clean and Validate Input | تنظيف وفحص المدخلات
-        cleaned = clean_arabic_text(user_text)
-        if not cleaned:
-            print("⚠️ يرجى إدخال نص عربي صحيح.")
-            continue
-            
-        # Transform and Predict | التحويل والتنبؤ
-        vec = our_vectorizer.transform([cleaned])
-        res = trained_model.predict(vec)
-        
-        # Output Result | عرض النتيجة
-        sentiment = "Positive | إيجابي" if res[0] == 1 else "Negative | سلبي"
-        print(f"Analysis Result: {sentiment}")
+    # Quick test case
+    test_phrase = "الخدمة ماش والتعامل سيء"
+    result = predict_sentiment(test_phrase, trained_model, our_vectorizer)
+    print(f"Integration Test Output: {result}")
